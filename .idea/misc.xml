@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="UnattendedHostPersistenceState">
+    <option name="openedFilesInfos">
+      <list>
+        <OpenedFileInfo>
+          <option name="caretOffset" value="1227" />
+          <option name="fileUrl" value="file://$PROJECT_DIR$/DataServer/redisTool/util.go" />
+        </OpenedFileInfo>
+        <OpenedFileInfo>
+          <option name="caretOffset" value="896" />
+          <option name="fileUrl" value="file://$PROJECT_DIR$/DataServer/objects/objects.go" />
+        </OpenedFileInfo>
+        <OpenedFileInfo>
+          <option name="caretOffset" value="594" />
+          <option name="fileUrl" value="file://$PROJECT_DIR$/ApiServer/heartbeat/heartbeat.go" />
+        </OpenedFileInfo>
+        <OpenedFileInfo>
+          <option name="caretOffset" value="266" />
+          <option name="fileUrl" value="file://$PROJECT_DIR$/ApiServer/server.go" />
+        </OpenedFileInfo>
+        <OpenedFileInfo>
+          <option name="caretOffset" value="204" />
+          <option name="fileUrl" value="file://$PROJECT_DIR$/DataServer/heartbeat/heartbeat.go" />
+        </OpenedFileInfo>
+        <OpenedFileInfo>
+          <option name="caretOffset" value="618" />
+          <option name="fileUrl" value="file://$PROJECT_DIR$/ApiServer/locate/locate.go" />
+        </OpenedFileInfo>
+        <OpenedFileInfo>
+          <option name="caretOffset" value="450" />
+          <option name="fileUrl" value="file://$PROJECT_DIR$/DataServer/locate/locate.go" />
+        </OpenedFileInfo>
+        <OpenedFileInfo>
+          <option name="caretOffset" value="654" />
+          <option name="fileUrl" value="file://$PROJECT_DIR$/ApiServer/objects/objects.go" />
+        </OpenedFileInfo>
+        <OpenedFileInfo>
+          <option name="caretOffset" value="0" />
+          <option name="fileUrl" value="file://$PROJECT_DIR$/DataServer/temp/objects/test3" />
+        </OpenedFileInfo>
+        <OpenedFileInfo>
+          <option name="caretOffset" value="456" />
+          <option name="fileUrl" value="file://$PROJECT_DIR$/DataServer/server.go" />
+        </OpenedFileInfo>
+      </list>
+    </option>
+  </component>
+</project>
