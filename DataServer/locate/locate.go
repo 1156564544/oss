@@ -14,7 +14,6 @@ func locate(name string) bool {
 func StartLocate(ip string) {
 	names := redisTool.SubMessage("dataServers")
 	for name := range names {
-		fmt.Println(os.Getenv("STORAGE_ROOT") + "/objects/" + name)
 		if locate(os.Getenv("STORAGE_ROOT") + "/objects/" + name) {
 			redisTool.PushMessage(name, ip)
 		}

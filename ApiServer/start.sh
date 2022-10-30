@@ -1,3 +1,3 @@
 #! /bin/sh
 
-go run server.go :9999
+go run server.go :10000

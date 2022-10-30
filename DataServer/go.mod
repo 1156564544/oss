@@ -7,5 +7,5 @@ require (
 )
 
 replace (
-	redisTool => ./redisTool
+	redisTool => ../util/redisTool
 )
