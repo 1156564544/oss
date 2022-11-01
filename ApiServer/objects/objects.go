@@ -1,17 +1,125 @@
 package objects
 
 import (
-	"ApiServer/heartbeat"
 	"ApiServer/locate"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"strconv"
 	"strings"
+	"net/url"
 
 	"es"
 	"httpTool"
 )
+
+func get(w http.ResponseWriter, r *http.Request) {
+	object := strings.Split(r.URL.EscapedPath(), "/")[2]
+	versionId := r.URL.Query()["version"]
+	version := 0
+	var err error
+	if len(versionId) != 0 {
+		// URL 指定了version
+		version, err = strconv.Atoi(versionId[0])
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+	}
+	meta, err := es.GetMetadata(object, version)
+	if err != nil {
+		log.Println(err.Error())
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	if meta.Hash == "" {
+		// 该对象已被删除
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+	// 从dataServers获取对象数据
+	ip := locate.Locate(meta.Hash)
+	if len(ip) == 0 {
+		w.WriteHeader(http.StatusNotFound)
+		log.Printf("%v is not exist!\n", object)
+		return
+	}
+	resp, err := http.Get("http://localhost" + ip + "/objects/" + meta.Hash)
+	if err != nil {
+		log.Println(err.Error())
+	}
+	defer resp.Body.Close()
+	_, err = io.Copy(w, resp.Body)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+	}
+}
+
+func put(w http.ResponseWriter, r *http.Request) {
+	// 从URL中获取对象的hash和size
+	hash := httpTool.GetHashFromHeader(r.Header)
+	if hash == "" {
+		log.Println("Hash is missing!")
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	size := httpTool.GetSizeFromHeader(r.Header)
+
+	// 写入对象数据到dataServers
+	if locate.Locate(hash) == "" {
+		// 根据hash和size从dataServers获得uuid并创建put流
+		stream,err:=CreatePutStream(hash, fmt.Sprintf("%v", size))
+		if err!=nil{
+			log.Println(err.Error())
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		// 根据客户端的数据流计算内容的哈希值，并将客户端的数据流传输给dataServers
+		reader:=io.TeeReader(r.Body, stream)
+		calculateHash:=calculateHash(reader)
+		// 如果计算出来的哈希值等于URL中的哈希值，则说明数据传输成功，让dataServers保存该数据，否则让dataServers删除该数据
+		iscommit:=calculateHash==hash
+		if !iscommit{
+			log.Println("Hash is error!")
+			w.WriteHeader(http.StatusInternalServerError)
+			return 
+		}
+		err=stream.commit(iscommit)
+		if err!=nil{
+			log.Println("Streaam commit failed: "+err.Error())
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+	} else {
+		log.Printf("%v is exist!\n", hash)
+	}
+
+	// 写入元数据到es
+	object := strings.Split(r.URL.EscapedPath(), "/")[2]
+	err := es.AddVersion(object, url.PathEscape(hash), size)
+	if err != nil {
+		log.Println(err.Error())
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+}
+
+func delete(w http.ResponseWriter, r *http.Request) {
+	object := strings.Split(r.URL.EscapedPath(), "/")[2]
+	meta, err := es.SearchLatestVersion(object)
+	if err != nil {
+		log.Println(err.Error())
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	err = es.PutMetadata(meta.Name, meta.Version+1, 0, "")
+	if err != nil {
+		log.Println(err.Error())
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+}
 
 func Handler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPut && r.Method != http.MethodGet && r.Method != http.MethodDelete {
@@ -20,94 +128,10 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	}
 	switch r.Method {
 	case http.MethodGet:
-		object := strings.Split(r.URL.EscapedPath(), "/")[2]
-		versionId := r.URL.Query()["version"]
-		version := 0
-		var err error
-		if len(versionId) != 0 {
-			// URL 指定了version
-			version, err = strconv.Atoi(versionId[0])
-			if err != nil {
-				w.WriteHeader(http.StatusBadRequest)
-				return
-			}
-		}
-		meta, err := es.GetMetadata(object, version)
-		if err != nil {
-			log.Println(err.Error())
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-		if meta.Hash == "" {
-			// 该对象已被删除
-			w.WriteHeader(http.StatusNotFound)
-			return
-		}
-		// 从dataServers获取对象数据
-		ip := locate.Locate(meta.Hash)
-		if len(ip) == 0 {
-			w.WriteHeader(http.StatusNotFound)
-			log.Printf("%v is not exist!\n", object)
-			return
-		}
-		resp, err := http.Get("http://localhost" + ip + "/objects/" + meta.Hash)
-		if err != nil {
-			log.Println(err.Error())
-		}
-		defer resp.Body.Close()
-		_, err = io.Copy(w, resp.Body)
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-		}
+		get(w, r)
 	case http.MethodPut:
-		// 从URL中获取对象的hash和size
-		hash := httpTool.GetHashFromHeader(r.Header)
-		if hash == "" {
-			log.Println("Hash is missing!")
-			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
-		size := httpTool.GetSizeFromHeader(r.Header)
-
-		// 写入对象数据到dataServers
-		if locate.Locate(hash) == "" {
-			ip := heartbeat.RandomChooseDataServers(1)[0]
-			log.Println(ip)
-			url := "http://localhost" + ip + "/objects/" + hash
-			req, err := http.NewRequest("PUT", url, r.Body)
-			if err != nil {
-				log.Println(err.Error())
-				w.WriteHeader(http.StatusInternalServerError)
-				return
-			}
-			res, _ := http.DefaultClient.Do(req)
-			defer res.Body.Close()
-		}else{
-			log.Printf("%v is exist!\n", hash)
-		}
-
-		// 写入元数据到es
-		object := strings.Split(r.URL.EscapedPath(), "/")[2]
-		err := es.AddVersion(object, hash, size)
-		if err != nil {
-			log.Println(err.Error())
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-
+		put(w, r)
 	case http.MethodDelete:
-		object := strings.Split(r.URL.EscapedPath(), "/")[2]
-		meta, err := es.SearchLatestVersion(object)
-		if err != nil {
-			log.Println(err.Error())
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-		err = es.PutMetadata(meta.Name, meta.Version+1, 0, "")
-		if err != nil {
-			log.Println(err.Error())
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
+		delete(w, r)
 	}
 }
