@@ -1,8 +1,6 @@
 package objects
 
 import (
-	"ApiServer/heartbeat"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -15,30 +13,26 @@ type putStream struct {
 	dataServer string
 }
 
-func CreatePutStream(hash string, size string) (*putStream, error) {
-	dataServers := heartbeat.RandomChooseDataServers(1)
-	if len(dataServers) == 0 {
-		return nil, errors.New("no dataServer")
-	}
-	server := dataServers[0]
+func CreatePutStream(server string, hash string, size int64) (*putStream, error) {
+	// 向dataServer的temp接口发送post请求，同时捎带hash和size
 	resp, err := http.PostForm("http://localhost"+server+"/temp/"+url.PathEscape(hash),
-		url.Values{"Size": {size}})
+		url.Values{"Size": {fmt.Sprintf("%d", size)}})
 	defer resp.Body.Close()
 	if err != nil {
 		return nil, fmt.Errorf("Post to dataServer error: %v", err.Error())
 	}
+	// 从dataServer的响应中获取uuid
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return nil,fmt.Errorf("Read uuid from dataServer error: %v", err.Error())
 	}
 	uuid := string(body)
-	fmt.Println(uuid)
 
+	// 根据dataServer的IP地址和uuid构造putStream对象
 	return &putStream{uuid,server}, nil
 }
 
 func (stream *putStream) Write(p []byte) (n int, err error) {
-	fmt.Println("http://localhost"+stream.dataServer+"/temp/"+stream.uuid)
 	req,err:=http.NewRequest(http.MethodPatch, "http://localhost"+stream.dataServer+"/temp/"+stream.uuid, strings.NewReader(string(p)))
 	if err!=nil{
 		return 0,err

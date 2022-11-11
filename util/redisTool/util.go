@@ -2,7 +2,6 @@ package redisTool
 
 import (
 	"context"
-	"fmt"
 	"github.com/go-redis/redis/v8"
 	"os"
 	"time"
@@ -61,7 +60,7 @@ func SubMessage(channel string) chan string {
 func PushMessage(list string, msg string) {
 	rdb := redisConnect()
 	rdb.LPush(context.Background(), list, msg)
-	fmt.Println(list, msg)
+	// fmt.Println(list, msg)
 	rdb.Expire(context.Background(), list, 2*time.Second)
 	rdb.Close()
 }
@@ -75,5 +74,6 @@ func PopMessage(list string) string {
 	if err != nil {
 		return ""
 	}
+	rdb.LPop(context.Background(), list)
 	return ip
 }

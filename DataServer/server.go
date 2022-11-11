@@ -10,13 +10,9 @@ import (
 	"os"
 )
 
-func locate2(name string) bool {
-	_, err := os.Stat(name)
-	return err == nil || !os.IsNotExist(err)
-}
-
 func main() {
 	ip := os.Args[1]
+	log.Printf("DataServer_%v start...\n", ip)
 	go heartbeat.StartHeartbeat(ip)
 	go locate.StartLocate(ip)
 	http.HandleFunc("/objects/", objects.Handler)

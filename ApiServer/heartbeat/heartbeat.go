@@ -57,11 +57,33 @@ func RandomChooseDataServers(n int) []string {
 	indexs := make(map[int]bool)
 	for idx < n {
 		index := rand.Intn(n)
-		if indexs[index] == false {
+		if !indexs[index] {
 			indexs[index] = true
 			servers[idx] = dataServerIps[index]
 			idx += 1
 		}
 	}
 	return servers
+}
+
+func randomChooseDataServersWithExclude(dataServerIps []string,n int,exclude map[int]string)[]string{
+	mu.Lock()
+	defer mu.Unlock()
+	exist:=make(map[string]bool)
+	for _,ip:=range exclude{
+		exist[ip]=true
+	}
+	servers:=make([]string,0)
+	for len(servers)+len(exclude)<n{
+		index:=rand.Intn(len(dataServerIps))
+		if !exist[dataServerIps[index]]{
+			servers=append(servers,dataServerIps[index])
+			exist[dataServerIps[index]]=true
+		}
+	}
+	return servers
+}
+
+func RandomChooseDataServersWithExclude(n int, exclude map[int]string) []string {
+	return randomChooseDataServersWithExclude(GetDataServers(),n,exclude)
 }

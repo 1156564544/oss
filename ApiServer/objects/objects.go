@@ -1,21 +1,22 @@
 package objects
 
 import (
-	"ApiServer/locate"
-	"fmt"
 	"io"
 	"log"
 	"net/http"
-	"strconv"
-	"strings"
 	"net/url"
+	"strings"
+	"strconv"
 
+	"ApiServer/heartbeat"
 	"es"
 	"httpTool"
+	"rs"
 )
 
 func get(w http.ResponseWriter, r *http.Request) {
 	object := strings.Split(r.URL.EscapedPath(), "/")[2]
+	// log.Println(object)
 	versionId := r.URL.Query()["version"]
 	version := 0
 	var err error
@@ -38,22 +39,23 @@ func get(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
+	// log.Println(meta.Hash,meta.Size)
 	// 从dataServers获取对象数据
-	ip := locate.Locate(meta.Hash)
-	if len(ip) == 0 {
+	stream,err:=CreateRSGetStream(meta.Hash,meta.Size)
+	if err!=nil{
+		log.Println("Get chunk error: ",err.Error())
 		w.WriteHeader(http.StatusNotFound)
-		log.Printf("%v is not exist!\n", object)
 		return
 	}
-	resp, err := http.Get("http://localhost" + ip + "/objects/" + meta.Hash)
+	_,err=io.Copy(w, stream)
+
 	if err != nil {
-		log.Println(err.Error())
-	}
-	defer resp.Body.Close()
-	_, err = io.Copy(w, resp.Body)
-	if err != nil {
+		log.Println("Read error: ", err.Error())
 		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
+
+	stream.Close()
 }
 
 func put(w http.ResponseWriter, r *http.Request) {
@@ -67,9 +69,10 @@ func put(w http.ResponseWriter, r *http.Request) {
 	size := httpTool.GetSizeFromHeader(r.Header)
 
 	// 写入对象数据到dataServers
-	if locate.Locate(hash) == "" {
+	if !Exist(hash)  {
 		// 根据hash和size从dataServers获得uuid并创建put流
-		stream,err:=CreatePutStream(hash, fmt.Sprintf("%v", size))
+		dataServers:=heartbeat.RandomChooseDataServers(rs.NUM_PARITY_SHARES+rs.NUM_DATA_SHARES)
+		stream,err:=CreateRSPutStream(dataServers,hash,size)
 		if err!=nil{
 			log.Println(err.Error())
 			w.WriteHeader(http.StatusInternalServerError)
@@ -82,6 +85,7 @@ func put(w http.ResponseWriter, r *http.Request) {
 		iscommit:=calculateHash==hash
 		if !iscommit{
 			log.Println("Hash is error!")
+			stream.commit(iscommit)
 			w.WriteHeader(http.StatusInternalServerError)
 			return 
 		}
