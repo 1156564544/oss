@@ -28,3 +28,8 @@ func Exist(hash string)bool{
 func getPersharedSize(size int64)int64{
 	return (size + int64(rs.NUM_DATA_SHARES-1)) / int64(rs.NUM_DATA_SHARES)
 }
+
+// 计算一个round读写的数据量
+func getRoundSize()int{
+	return rs.CHUNK_SIZE*(rs.NUM_DATA_SHARES+rs.NUM_PARITY_SHARES)
+}

@@ -1,12 +1,13 @@
 package objects
 
 import (
+	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"net/url"
-	"strings"
 	"strconv"
+	"strings"
 
 	"ApiServer/heartbeat"
 	"es"
@@ -46,6 +47,12 @@ func get(w http.ResponseWriter, r *http.Request) {
 		log.Println("Get chunk error: ",err.Error())
 		w.WriteHeader(http.StatusNotFound)
 		return
+	}
+	offset:=httpTool.GetOffsetFromHeader(r.Header)
+	fmt.Println(offset)
+	if offset!=0{
+		// 从指定位置开始读取
+		_,err=stream.Seek(offset,io.SeekCurrent)
 	}
 	_,err=io.Copy(w, stream)
 

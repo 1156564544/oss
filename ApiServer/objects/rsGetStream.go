@@ -127,3 +127,22 @@ func (stream *RSGetStream) Close() error {
 	}
 	return nil
 }
+
+func (stream *RSGetStream) Seek(offset int64, whence int) (int64, error) {
+	if whence != io.SeekCurrent {
+		return 0, errors.New("Only support io.SeekCurrent")
+	}
+	if offset < 0 {
+		return 0, errors.New("Offset must be positive")
+	}
+	for offset>0{
+		length:=getRoundSize()
+		if length>int(offset){
+			length=int(offset)
+		}
+		buf:=make([]byte,length)
+		io.ReadFull(stream, buf)
+		offset-=int64(length)
+	}
+	return offset, nil 
+}
