@@ -1,9 +1,8 @@
 package rs
 
-const(
-	NUM_DATA_SHARES = 4
+const (
+	NUM_DATA_SHARES   = 4
 	NUM_PARITY_SHARES = 2
-	CHUNK_SIZE = 1024
+	NUM_SHARDS        = NUM_DATA_SHARES + NUM_PARITY_SHARES
+	CHUNK_SIZE        = 2
 )
-
-

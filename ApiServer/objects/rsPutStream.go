@@ -1,9 +1,11 @@
 package objects
 
 import (
-	"fmt"
-	"sync"
 	"errors"
+	"fmt"
+	"log"
+	"sync"
+
 	reedsolomon "github.com/klauspost/reedsolomon"
 
 	"rs"
@@ -15,15 +17,26 @@ type RSPutStream struct {
 	cache []byte
 }
 
+func CreateRSPutStreamFromPutStreams(writers []*putStream) (*RSPutStream,error){
+	if len(writers)!=rs.NUM_SHARDS{
+		return nil,errors.New("Invalid writers")
+	}
+	enc, err := reedsolomon.New(rs.NUM_DATA_SHARES, rs.NUM_PARITY_SHARES)
+	if err != nil {
+		return nil, err
+	}
+	return &RSPutStream{writers,enc,make([]byte,0)},nil
+}
+
 func CreateRSPutStream(dataServers []string, hash string, size int64) (*RSPutStream, error) {
-	if len(dataServers) < rs.NUM_DATA_SHARES+rs.NUM_PARITY_SHARES {
+	if len(dataServers) < rs.NUM_SHARDS {
 		return nil, errors.New("no enough dataServers")
 	}
-	writers := make([]*putStream, rs.NUM_DATA_SHARES+rs.NUM_PARITY_SHARES)
+	writers := make([]*putStream, rs.NUM_SHARDS)
 	perShard:=getPersharedSize(size)
 	var wg sync.WaitGroup
-	wg.Add(rs.NUM_DATA_SHARES+rs.NUM_PARITY_SHARES)
-	for i:=0;i<rs.NUM_DATA_SHARES+rs.NUM_PARITY_SHARES;i++{
+	wg.Add(rs.NUM_SHARDS)
+	for i:=0;i<rs.NUM_SHARDS;i++{
 		go func (i int){
 			var err error
 			writers[i],err=CreatePutStream(dataServers[i],fmt.Sprintf("%s.%v",hash,i),perShard)
@@ -43,6 +56,7 @@ func (stream *RSPutStream) Write(p []byte) (n int, err error) {
 	for current<len(p){
 		if len(stream.cache)+len(p[current:])<=rs.CHUNK_SIZE*rs.NUM_DATA_SHARES{
 			stream.cache=append(stream.cache,p[current:]...)
+			log.Println("flush1")
 			err=stream.Flush()
 			if err!=nil{
 				return 0,err
@@ -51,7 +65,11 @@ func (stream *RSPutStream) Write(p []byte) (n int, err error) {
 		}
 		need:=rs.CHUNK_SIZE*rs.NUM_DATA_SHARES-len(stream.cache)
 		stream.cache=append(stream.cache,p[current:current+need]...)
-		stream.Flush()
+		// stream.Flush()
+		if len(stream.cache)==rs.CHUNK_SIZE*rs.NUM_DATA_SHARES{
+			log.Println("flush2")
+			stream.Flush()
+		}
 		if err!=nil{
 			return 0,err
 		}
@@ -62,8 +80,10 @@ func (stream *RSPutStream) Write(p []byte) (n int, err error) {
 
 func (stream *RSPutStream) Flush() error {
 	shards,_:=stream.enc.Split(stream.cache)
+	log.Println("stream.cache:",stream.cache)
+	log.Println("shards:",shards)
 	stream.enc.Encode(shards)
-	for i := 0; i < rs.NUM_DATA_SHARES+rs.NUM_PARITY_SHARES; i++ {
+	for i := 0; i < rs.NUM_SHARDS; i++ {
 		_,err:=stream.writers[i].Write(shards[i])
 		if err!=nil{
 			return fmt.Errorf("%v-th putStream write error: %v", i, err.Error())
@@ -73,10 +93,10 @@ func (stream *RSPutStream) Flush() error {
 	return nil
 }
 
-func (stream *RSPutStream)commit(iscommit bool) error{
+func (stream *RSPutStream)Commit(iscommit bool) error{
 	var wg sync.WaitGroup
-	wg.Add(rs.NUM_DATA_SHARES+rs.NUM_PARITY_SHARES)
-	for i:=0;i<rs.NUM_DATA_SHARES+rs.NUM_PARITY_SHARES;i++{
+	wg.Add(rs.NUM_SHARDS)
+	for i:=0;i<rs.NUM_SHARDS;i++{
 		go func (i int){
 			err:=stream.writers[i].commit(iscommit)
 			if err!=nil{

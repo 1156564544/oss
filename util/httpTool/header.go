@@ -19,7 +19,7 @@ func GetHashFromHeader(h http.Header) (digest string) {
 
 // 从http头中读取object的size
 func GetSizeFromHeader(h http.Header) int64 {
-	content_length := h.Get("Content-Length")
+	content_length := h.Get("length")
 	size, _ := strconv.ParseInt(content_length, 10, 64)
 	return size
 }

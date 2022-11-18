@@ -29,13 +29,13 @@ func CreateRSGetStream(hash string, size int64) (*RSGetStream, error) {
 	}
 	dataServers := make([]string, 0)
 	// 有chunk丢失了，需要恢复丢失的chunk
-	if len(ips) < rs.NUM_DATA_SHARES+rs.NUM_PARITY_SHARES {
-		dataServers = heartbeat.RandomChooseDataServersWithExclude(rs.NUM_DATA_SHARES+rs.NUM_PARITY_SHARES, ips)
+	if len(ips) < rs.NUM_SHARDS {
+		dataServers = heartbeat.RandomChooseDataServersWithExclude(rs.NUM_SHARDS, ips)
 	}
-	writers := make([]io.Writer, rs.NUM_DATA_SHARES+rs.NUM_PARITY_SHARES)
-	readers := make([]io.Reader, rs.NUM_DATA_SHARES+rs.NUM_PARITY_SHARES)
+	writers := make([]io.Writer, rs.NUM_SHARDS)
+	readers := make([]io.Reader, rs.NUM_SHARDS)
 	perShard := getPersharedSize(size)
-	for i := 0; i < rs.NUM_DATA_SHARES+rs.NUM_PARITY_SHARES; i++ {
+	for i := 0; i < rs.NUM_SHARDS; i++ {
 		if server, ok := ips[i]; !ok {
 			server = dataServers[0]
 			dataServers = dataServers[1:]
@@ -80,7 +80,7 @@ func (stream *RSGetStream) decoding() error {
 		return io.EOF
 	}
 	// shards: 读取数据块
-	shards := make([][]byte, rs.NUM_DATA_SHARES+rs.NUM_PARITY_SHARES)
+	shards := make([][]byte, rs.NUM_SHARDS)
 	// repareIds: 记录需要恢复的chunk号
 	repareIds := make([]int, 0)
 	// 从dataServers读取数据

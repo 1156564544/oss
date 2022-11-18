@@ -92,11 +92,11 @@ func put(w http.ResponseWriter, r *http.Request) {
 		iscommit:=calculateHash==hash
 		if !iscommit{
 			log.Println("Hash is error!")
-			stream.commit(iscommit)
+			stream.Commit(iscommit)
 			w.WriteHeader(http.StatusInternalServerError)
 			return 
 		}
-		err=stream.commit(iscommit)
+		err=stream.Commit(iscommit)
 		if err!=nil{
 			log.Println("Streaam commit failed: "+err.Error())
 			w.WriteHeader(http.StatusBadRequest)
@@ -108,12 +108,51 @@ func put(w http.ResponseWriter, r *http.Request) {
 
 	// 写入元数据到es
 	object := strings.Split(r.URL.EscapedPath(), "/")[2]
-	err := es.AddVersion(object, url.PathEscape(hash), size)
+	err := es.AddVersion(object, hash, size)
 	if err != nil {
 		log.Println(err.Error())
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+}
+
+func post(w http.ResponseWriter, r *http.Request) {
+	// 从URL中获取对象的hash和size
+	object := strings.Split(r.URL.EscapedPath(), "/")[2]
+	hash := httpTool.GetHashFromHeader(r.Header)
+	if hash == "" {
+		log.Println("Hash is missing!")
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	size := httpTool.GetSizeFromHeader(r.Header)
+	if Exist(hash){
+		// 写入元数据到es
+		err := es.AddVersion(object, hash, size)
+		if err != nil {
+			log.Println(err.Error())
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+	}
+	// log.Println(hash,size)
+
+	dataServers:=heartbeat.RandomChooseDataServers(rs.NUM_SHARDS)
+	if len(dataServers)<rs.NUM_SHARDS{
+		log.Println("Data server is not enough!")
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	// 创建rsResumablePutStream
+	stream,err:=CreateRSResumablePutStream(dataServers,object,hash,size)
+	if err!=nil{
+		log.Println(err.Error())
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	// 在http头部中写入location:token返回给客户端
+	w.Header().Set("location", "/temp/"+url.PathEscape(stream.ToToken()))
+	w.WriteHeader(http.StatusCreated)
 }
 
 func delete(w http.ResponseWriter, r *http.Request) {
@@ -133,10 +172,6 @@ func delete(w http.ResponseWriter, r *http.Request) {
 }
 
 func Handler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPut && r.Method != http.MethodGet && r.Method != http.MethodDelete {
-		w.WriteHeader(http.StatusMethodNotAllowed)
-		return
-	}
 	switch r.Method {
 	case http.MethodGet:
 		get(w, r)
@@ -144,5 +179,9 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		put(w, r)
 	case http.MethodDelete:
 		delete(w, r)
+	case http.MethodPost:
+		post(w, r)
+	default:
+		w.WriteHeader(http.StatusMethodNotAllowed)
 	}
 }

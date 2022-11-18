@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"io"
 	"encoding/base64"
+	"net/url"
 
 	"rs"
 )
@@ -14,9 +15,7 @@ func calculateHash(r io.Reader)string {
 	h := sha256.New()
 	io.Copy(h, r)
 	hash:= base64.StdEncoding.EncodeToString(h.Sum(nil))
-	// 这里是因为我算出来的hash值最后面有一个等号hao，所以我把它去掉了，客户端提交的hash值也要做同样的处理
-	// return hash[:len(hash)-1]
-	return hash
+	return url.PathEscape(hash)
 }
 
 // 判断object是否存在

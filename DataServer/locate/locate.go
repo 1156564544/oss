@@ -1,13 +1,13 @@
 package locate
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
-	"redisTool"
 	"strconv"
 	"strings"
 	"sync"
+
+	"redisTool"
 )
 
 var mu sync.Mutex
@@ -43,7 +43,6 @@ func StartLocate(ip string) {
 			mu.Unlock()
 			// 以<ip>_<id of shard>的格式向apiServers发送心跳
 			// redisTool.PubMessage(name, ip+"_"+strconv.Itoa(id))
-			fmt.Println(ip+"_"+strconv.Itoa(id))
 			redisTool.PushMessage(hash, ip+"_"+strconv.Itoa(id))
 		}
 	}

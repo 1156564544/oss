@@ -5,6 +5,7 @@ import (
 	"ApiServer/locate"
 	"ApiServer/objects"
 	"ApiServer/versions"
+	"ApiServer/temp"
 	"log"
 	"net/http"
 	"os"
@@ -21,5 +22,7 @@ func main() {
 	http.HandleFunc("/locate/", locate.Handler)
 	http.HandleFunc("/objects/", objects.Handler)
 	http.HandleFunc("/versions/", versions.Handler)
+	http.HandleFunc("/temp/", temp.Handler)
+
 	log.Fatal(http.ListenAndServe(ip, nil))
 }

@@ -15,19 +15,20 @@ type putStream struct {
 
 func CreatePutStream(server string, hash string, size int64) (*putStream, error) {
 	// 向dataServer的temp接口发送post请求，同时捎带hash和size
-	resp, err := http.PostForm("http://localhost"+server+"/temp/"+url.PathEscape(hash),
+	resp, err := http.PostForm("http://localhost"+server+"/temp/"+hash,
 		url.Values{"Size": {fmt.Sprintf("%d", size)}})
-	defer resp.Body.Close()
 	if err != nil {
 		return nil, fmt.Errorf("Post to dataServer error: %v", err.Error())
 	}
+	defer resp.Body.Close()
 	// 从dataServer的响应中获取uuid
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return nil,fmt.Errorf("Read uuid from dataServer error: %v", err.Error())
 	}
 	uuid := string(body)
-
+	// log.Println("uuid:", uuid)
+	// log.Println("server:", server)
 	// 根据dataServer的IP地址和uuid构造putStream对象
 	return &putStream{uuid,server}, nil
 }
@@ -39,10 +40,10 @@ func (stream *putStream) Write(p []byte) (n int, err error) {
 	}
 	client:=http.Client{}
 	resp,err:=client.Do(req)
-	defer resp.Body.Close()
 	if err!=nil{
 		return 0,err
 	}
+	defer resp.Body.Close()
 	if resp.StatusCode!=http.StatusOK{
 		return 0,fmt.Errorf("dataServer write error with status code %d",resp.StatusCode)
 	}
