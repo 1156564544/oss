@@ -2,6 +2,7 @@ package temp
 
 import (
 	"DataServer/locate"
+	"DataServer/utils"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -135,15 +136,15 @@ func put(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	// 将临时文件重命名为正式文件
-	err = os.Rename(os.Getenv("STORAGE_ROOT")+"/temp/"+tempInfo.Uuid+".dat", string(os.Getenv("STORAGE_ROOT")+"/objects/"+tempInfo.Hash+"."+strconv.Itoa(tempInfo.ID)))
-	// err=os.Rename(os.Getenv("STORAGE_ROOT")+"/temp/"+tempInfo.Uuid+".dat", "/data1/objects/ic%2F8+5zNfK4R9PY5wlfgAGl8wWF8aEORabXRGReyMXg=")
-	if err != nil {
-		log.Println("Rename failed: " + err.Error())
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	log.Println("add object: " + tempInfo.Hash + "." + strconv.Itoa(tempInfo.ID))
+	// 对临时文件基于gzip进行压缩
+	readFile, _ := os.OpenFile(os.Getenv("STORAGE_ROOT")+"/temp/"+tempInfo.Uuid+".dat", os.O_CREATE|os.O_APPEND, 6) 
+	defer readFile.Close()
+	buf,_:=ioutil.ReadAll(readFile)
+	log.Println(string(buf))
+	utils.Gzip(buf, string(os.Getenv("STORAGE_ROOT")+"/objects/"+tempInfo.Hash+"."+strconv.Itoa(tempInfo.ID)))
+	os.Remove(os.Getenv("STORAGE_ROOT")+"/temp/"+tempInfo.Uuid+".dat")
+
+	log.Println("add object:  "+ tempInfo.Hash + "." + strconv.Itoa(tempInfo.ID)+" in "+ string(os.Getenv("STORAGE_ROOT")+"/objects/"+tempInfo.Hash+"."+strconv.Itoa(tempInfo.ID)))
 	locate.Add(tempInfo.Hash, tempInfo.ID)
 }
 

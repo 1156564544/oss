@@ -5,11 +5,12 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
-	"net/url"
 )
 
 func calculateHash(s string) string {
@@ -97,25 +98,24 @@ func put(object string, msg string) error {
 }
 
 func get(object string) string {
-	url := "http://localhost:10000/objects/" + object
+	url := "localhost:10000/objects/" + object
 	resp, err := http.Get(url)
 	if err != nil {
 		log.Println(err)
 		return ""
 	}
 	defer resp.Body.Close()
-	buf := make([]byte, 1024)
-	n, err := resp.Body.Read(buf)
+	buf,err:=ioutil.ReadAll(resp.Body)
 	if err != nil {
 		log.Println(err)
 		return ""
 	}
-	return string(buf[:n])
+	return string(buf)
 }
 
 func main() {
-	object := "test6_24"
-	msg := "this is the object test6_24"
+	object := "test7_25"
+	msg := "this is the object test7_25"
 	// token, err := post(object, msg)
 	// if err != nil {
 	// 	log.Println(err.Error())
