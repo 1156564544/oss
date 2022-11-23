@@ -31,7 +31,7 @@ func put(w http.ResponseWriter, r *http.Request) {
 	// log.Println("offset: ",offset)
 	if offset!=current{
 		log.Println("offset与当前位置不符")
-		w.WriteHeader(http.StatusForbidden)
+		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 	buf:=make([]byte,rs.CHUNK_SIZE*rs.NUM_DATA_SHARES)
@@ -51,6 +51,7 @@ func put(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if n != rs.CHUNK_SIZE*rs.NUM_DATA_SHARES && current != stream.Token.Size {
+			w.WriteHeader(http.StatusAccepted)
 			return
 		}
 		stream.RSPutStream.Write(buf[:n])

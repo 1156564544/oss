@@ -29,3 +29,26 @@ func TestSet(t *testing.T) {
 		t.Error("SetExist error with expire")
 	}
 }
+
+func TestKeyValue(t *testing.T) {
+	key:= "key"
+	value:= "value"
+	err:=AddKeyValue(key,value)
+	if err!=nil{
+		t.Error(err)
+	}
+
+	v,err:=GetKeyValue(key)
+	if err!=nil{
+		t.Error(err)
+	}
+	if v!=value{
+		t.Error("GetKeyValue error")
+	}
+	DelKeyValue(key)
+	v,err=GetKeyValue(key)
+
+	if v!=""{
+		t.Error("DelKeyValue error")
+	}
+}

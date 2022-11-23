@@ -2,10 +2,6 @@ module DataServer
 
 go 1.16
 
-require (
-	redisTool v1.0.0
-)
+require redisTool v1.0.0
 
-replace (
-	redisTool => ../util/redisTool
-)
+replace redisTool => ../util/redisTool

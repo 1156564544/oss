@@ -2,16 +2,17 @@ package redisTool
 
 import (
 	"context"
-	"github.com/go-redis/redis/v8"
-	redigo "github.com/garyburd/redigo/redis"
 	"log"
 	"os"
 	"time"
+
+	redigo "github.com/garyburd/redigo/redis"
+	"github.com/go-redis/redis/v8"
 )
 
 const (
 	// token的过期时间
-	setDuration = 10 
+	setDuration = 10
 	// list的过期时间
 	listDuration = 2
 )
@@ -87,27 +88,69 @@ func PopMessage(list string) string {
 }
 
 // 向Set中添加元素
-func SetAdd(key string){
+func SetAdd(key string) {
 	c, err := redigo.Dial("tcp", "localhost:6379")
 	if err != nil {
-        log.Println("conn redis failed,", err)
-        return
-    }
+		log.Println("conn redis failed,", err)
+		return
+	}
 	defer c.Close()
 	_, err = c.Do("SET", key, 0, "EX", setDuration)
-    if err != nil {
-        log.Println(err)
-        return
+	if err != nil {
+		log.Println(err)
+		return
 	}
 }
 
 // 查找集合中元素是否存在
-func SetExist(key string) (bool,error) {
+func SetExist(key string) (bool, error) {
 	c, err := redigo.Dial("tcp", "localhost:6379")
 	if err != nil {
-        log.Println("conn redis failed,", err)
-        return false,err
-    }
+		log.Println("conn redis failed,", err)
+		return false, err
+	}
 	defer c.Close()
 	return redigo.Bool(c.Do("EXISTS", key))
+}
+
+// 添加k-v元素到集合中
+func AddKeyValue(key string, value string) error {
+	c, err := redigo.Dial("tcp", "localhost:6379")
+	if err != nil {
+		log.Println("conn redis failed,", err)
+		return err
+	}
+	defer c.Close()
+	_, err = c.Do("SET", key, value)
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+	return nil
+}
+
+// 从集合中获取k-v元素
+func GetKeyValue(key string) (string, error) {
+	c, err := redigo.Dial("tcp", "localhost:6379")
+	if err != nil {
+		log.Println("conn redis failed,", err)
+		return "", err
+	}
+	defer c.Close()
+	return redigo.String(c.Do("GET", key))
+}
+
+// 删除集合中的元素
+func DelKeyValue(key string) {
+	c, err := redigo.Dial("tcp", "localhost:6379")
+	if err != nil {
+		log.Println("conn redis failed,", err)
+		return
+	}
+	defer c.Close()
+	_, err = c.Do("DEL", key)
+	if err != nil {
+		log.Println(err)
+		return
+	}
 }
