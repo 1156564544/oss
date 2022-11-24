@@ -5,6 +5,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"strconv"
 )
 
 type getStream struct {
@@ -19,7 +20,7 @@ func CreateGetStream(server, name string, size int64) (*getStream, error) {
 	}
 	if resp.StatusCode != http.StatusOK {
 		log.Println("resp.StatusCode:", resp.StatusCode)
-		return nil, errors.New("Get with status code " + string(resp.StatusCode))
+		return nil, errors.New("Get with status code " + strconv.Itoa(resp.StatusCode))
 	}
 	return &getStream{resp.Body},nil
 }
