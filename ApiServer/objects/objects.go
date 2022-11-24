@@ -16,6 +16,10 @@ import (
 )
 
 func get(w http.ResponseWriter, r *http.Request) {
+	if !checkReadPermission(r){
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
 	object := strings.Split(r.URL.EscapedPath(), "/")[2]
 	// log.Println(object)
 	versionId := r.URL.Query()["version"]
@@ -66,6 +70,10 @@ func get(w http.ResponseWriter, r *http.Request) {
 }
 
 func put(w http.ResponseWriter, r *http.Request) {
+	if !checkWritePermission(r){
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
 	// 从URL中获取对象的hash和size
 	hash := httpTool.GetHashFromHeader(r.Header)
 	if hash == "" {
@@ -117,6 +125,10 @@ func put(w http.ResponseWriter, r *http.Request) {
 }
 
 func post(w http.ResponseWriter, r *http.Request) {
+	if !checkWritePermission(r){
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
 	// 从URL中获取对象的hash和size
 	object := strings.Split(r.URL.EscapedPath(), "/")[2]
 	hash := httpTool.GetHashFromHeader(r.Header)
@@ -156,6 +168,10 @@ func post(w http.ResponseWriter, r *http.Request) {
 }
 
 func delete(w http.ResponseWriter, r *http.Request) {
+	if !checkWritePermission(r){
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
 	object := strings.Split(r.URL.EscapedPath(), "/")[2]
 	meta, err := es.SearchLatestVersion(object)
 	if err != nil {
